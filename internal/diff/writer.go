@@ -13,17 +13,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
 
-// WriteOptions controls file generation behaviour.
-type WriteOptions struct {
-	MigrationsDir string
-	Name          string // migration name, e.g. "add_posts_table"
-}
+	"github.com/nutcas3/migrate-gen/models"
+)
 
 // WriteMigration writes the .up.sql and .down.sql files to MigrationsDir.
 // Returns the paths of files written, or empty slice if nothing changed.
-func WriteMigration(result *Result, opts WriteOptions) ([]string, error) {
+func WriteMigration(result *models.Result, opts models.WriteOptions) ([]string, error) {
 	if result.IsEmpty() {
 		return nil, nil
 	}
@@ -52,7 +48,7 @@ func WriteMigration(result *Result, opts WriteOptions) ([]string, error) {
 	return []string{upPath, downPath}, nil
 }
 
-func writeFile(path string, stmts []Statement, direction, migName string) error {
+func writeFile(path string, stmts []models.Statement, direction, migName string) error {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("-- Migration: %s (%s)\n", migName, direction))
@@ -86,16 +82,10 @@ func writeFile(path string, stmts []Statement, direction, migName string) error 
 	return os.WriteFile(path, []byte(sb.String()), 0o644)
 }
 
-// CheckResult is the exit value for --check mode.
-type CheckResult struct {
-	InSync  bool
-	Changes []string // human-readable summary of what changed
-}
-
 // FormatCheckOutput renders a summary for CI log output.
-func FormatCheckOutput(result *Result) *CheckResult {
+func FormatCheckOutput(result *models.Result) *models.CheckResult {
 	if result.IsEmpty() {
-		return &CheckResult{InSync: true}
+		return &models.CheckResult{InSync: true}
 	}
 
 	var changes []string
@@ -110,7 +100,7 @@ func FormatCheckOutput(result *Result) *CheckResult {
 			changes = append(changes, "  • "+preview)
 		}
 	}
-	return &CheckResult{InSync: false, Changes: changes}
+	return &models.CheckResult{InSync: false, Changes: changes}
 }
 
 // nextSequence returns the next integer after the highest existing sequence

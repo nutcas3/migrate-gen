@@ -16,33 +16,14 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/nutcas3/migrate-gen/models"
 )
-
-// Result holds everything the generator needs to write the migration files.
-type Result struct {
-	UpStatements   []Statement
-	DownStatements []Statement
-	Warnings       []string
-	HasDestructive bool // true if any warned DROP/TRUNCATE is present
-}
-
-// Statement is one logical SQL change with metadata.
-type Statement struct {
-	SQL      string
-	Comment  string // displayed above the statement in the .sql file
-	Danger   bool   // true = flagged for senior-engineer review
-	Commented bool  // true = written as a SQL comment (DROP TABLE etc.)
-}
-
-// IsEmpty returns true when nothing changed.
-func (r *Result) IsEmpty() bool {
-	return len(r.UpStatements) == 0 && len(r.Warnings) == 0
-}
 
 // Diff computes what SQL is needed to bring `current` to match `desired`.
 // Both schemas come from InspectDB() on shadow containers.
-func Diff(current, desired *Schema) *Result {
-	r := &Result{}
+func Diff(current, desired *models.Schema) *models.Result {
+	r := &models.Result{}
 
 	// 1. Tables in desired but missing or changed in current
 	tableNames := sortedKeys(desired.Tables)
@@ -52,11 +33,11 @@ func Diff(current, desired *Schema) *Result {
 
 		if !exists {
 			up, down := buildCreateTable(desiredTable)
-			r.UpStatements = append(r.UpStatements, Statement{
+			r.UpStatements = append(r.UpStatements, models.Statement{
 				SQL:     up,
 				Comment: fmt.Sprintf("New table: %s", tname),
 			})
-			r.DownStatements = append(r.DownStatements, Statement{
+			r.DownStatements = append(r.DownStatements, models.Statement{
 				SQL:     down,
 				Comment: fmt.Sprintf("Rollback: drop table %s", tname),
 			})
@@ -79,13 +60,13 @@ func Diff(current, desired *Schema) *Result {
 	for tname := range current.Tables {
 		if _, stillExists := desired.Tables[tname]; !stillExists {
 			drop := fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE;", quote(tname))
-			r.UpStatements = append(r.UpStatements, Statement{
+			r.UpStatements = append(r.UpStatements, models.Statement{
 				SQL:       drop,
 				Comment:   fmt.Sprintf("⚠️  TABLE REMOVED from schema.sql — uncomment after review"),
 				Danger:    true,
 				Commented: true,
 			})
-			r.DownStatements = append(r.DownStatements, Statement{
+			r.DownStatements = append(r.DownStatements, models.Statement{
 				SQL:     fmt.Sprintf("-- Restore table %s manually if needed.", tname),
 				Comment: "Rollback of a DROP TABLE must be done manually.",
 			})
@@ -98,7 +79,7 @@ func Diff(current, desired *Schema) *Result {
 	return r
 }
 
-func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []string) {
+func diffColumns(current, desired *models.Table) (ups, downs []models.Statement, warnings []string) {
 	tname := desired.Name
 
 	// Added or changed columns
@@ -114,7 +95,7 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 				// emit as nullable first, then set NOT NULL after a backfill step.
 				nullClause = " -- NOTE: add DEFAULT or backfill before SET NOT NULL"
 			}
-			ups = append(ups, Statement{
+			ups = append(ups, models.Statement{
 				SQL: fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s%s%s;",
 					quote(tname),
 					quote(colName),
@@ -124,7 +105,7 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 				),
 				Comment: fmt.Sprintf("Add column %s.%s", tname, colName),
 			})
-			downs = append(downs, Statement{
+			downs = append(downs, models.Statement{
 				SQL:     fmt.Sprintf("ALTER TABLE %s DROP COLUMN IF EXISTS %s;", quote(tname), quote(colName)),
 				Comment: fmt.Sprintf("Rollback: drop column %s.%s", tname, colName),
 			})
@@ -133,7 +114,7 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 
 		// Type drift?
 		if currentCol.FullType != desiredCol.FullType {
-			ups = append(ups, Statement{
+			ups = append(ups, models.Statement{
 				SQL: fmt.Sprintf(
 					"ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s;",
 					quote(tname), quote(colName),
@@ -144,7 +125,7 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 					tname, colName, currentCol.FullType, desiredCol.FullType),
 				Danger: true,
 			})
-			downs = append(downs, Statement{
+			downs = append(downs, models.Statement{
 				SQL: fmt.Sprintf(
 					"ALTER TABLE %s ALTER COLUMN %s TYPE %s USING %s::%s;",
 					quote(tname), quote(colName),
@@ -158,21 +139,21 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 		// Nullability drift?
 		if currentCol.IsNullable != desiredCol.IsNullable {
 			if desiredCol.IsNullable {
-				ups = append(ups, Statement{
+				ups = append(ups, models.Statement{
 					SQL:     fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", quote(tname), quote(colName)),
 					Comment: fmt.Sprintf("Allow nulls: %s.%s", tname, colName),
 				})
-				downs = append(downs, Statement{
+				downs = append(downs, models.Statement{
 					SQL:     fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quote(tname), quote(colName)),
 					Comment: fmt.Sprintf("Rollback nullability: %s.%s", tname, colName),
 				})
 			} else {
-				ups = append(ups, Statement{
+				ups = append(ups, models.Statement{
 					SQL:     fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quote(tname), quote(colName)),
 					Comment: fmt.Sprintf("⚠️  SET NOT NULL %s.%s — ensure no NULL rows exist first", tname, colName),
 					Danger:  true,
 				})
-				downs = append(downs, Statement{
+				downs = append(downs, models.Statement{
 					SQL:     fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", quote(tname), quote(colName)),
 					Comment: fmt.Sprintf("Rollback NOT NULL: %s.%s", tname, colName),
 				})
@@ -184,13 +165,13 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 	for colName := range current.Columns {
 		if _, stillExists := desired.Columns[colName]; !stillExists {
 			drop := fmt.Sprintf("ALTER TABLE %s DROP COLUMN IF EXISTS %s;", quote(tname), quote(colName))
-			ups = append(ups, Statement{
+			ups = append(ups, models.Statement{
 				SQL:       drop,
 				Comment:   fmt.Sprintf("⚠️  COLUMN REMOVED: %s.%s — uncomment after review and data migration", tname, colName),
 				Danger:    true,
 				Commented: true,
 			})
-			downs = append(downs, Statement{
+			downs = append(downs, models.Statement{
 				SQL: fmt.Sprintf("-- Restore %s.%s manually (data is gone after DROP COLUMN).", tname, colName),
 			})
 			warnings = append(warnings,
@@ -201,7 +182,7 @@ func diffColumns(current, desired *Table) (ups, downs []Statement, warnings []st
 	return
 }
 
-func diffIndexes(current, desired *Schema, tableName string) (ups, downs []Statement) {
+func diffIndexes(current, desired *models.Schema, tableName string) (ups, downs []models.Statement) {
 	// Desired indexes for this table
 	for idxName, desiredIdx := range desired.Indexes {
 		if desiredIdx.TableName != tableName {
@@ -212,7 +193,7 @@ func diffIndexes(current, desired *Schema, tableName string) (ups, downs []State
 			if desiredIdx.IsUnique {
 				unique = "UNIQUE "
 			}
-			ups = append(ups, Statement{
+			ups = append(ups, models.Statement{
 				SQL: fmt.Sprintf("CREATE %sINDEX %s ON %s USING %s (%s);",
 					unique,
 					quote(idxName),
@@ -222,7 +203,7 @@ func diffIndexes(current, desired *Schema, tableName string) (ups, downs []State
 				),
 				Comment: fmt.Sprintf("New index: %s", idxName),
 			})
-			downs = append(downs, Statement{
+			downs = append(downs, models.Statement{
 				SQL:     fmt.Sprintf("DROP INDEX IF EXISTS %s;", quote(idxName)),
 				Comment: fmt.Sprintf("Rollback: drop index %s", idxName),
 			})
@@ -235,11 +216,11 @@ func diffIndexes(current, desired *Schema, tableName string) (ups, downs []State
 			continue
 		}
 		if _, stillExists := desired.Indexes[idxName]; !stillExists {
-			ups = append(ups, Statement{
+			ups = append(ups, models.Statement{
 				SQL:     fmt.Sprintf("DROP INDEX IF EXISTS %s;", quote(idxName)),
 				Comment: fmt.Sprintf("Remove index: %s", idxName),
 			})
-			downs = append(downs, Statement{
+			downs = append(downs, models.Statement{
 				SQL: fmt.Sprintf("CREATE INDEX %s ON %s (%s);",
 					quote(idxName),
 					quote(tableName),
@@ -252,7 +233,7 @@ func diffIndexes(current, desired *Schema, tableName string) (ups, downs []State
 	return
 }
 
-func buildCreateTable(t *Table) (up, down string) {
+func buildCreateTable(t *models.Table) (up, down string) {
 	var lines []string
 
 	for _, colName := range t.ColOrder {
@@ -288,7 +269,7 @@ func buildCreateTable(t *Table) (up, down string) {
 	return
 }
 
-func nullabilityClause(c *Column) string {
+func nullabilityClause(c *models.Column) string {
 	if !c.IsNullable {
 		return " NOT NULL"
 	}

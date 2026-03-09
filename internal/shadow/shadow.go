@@ -23,6 +23,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/nutcas3/migrate-gen/models"
 )
 
 const (
@@ -34,24 +35,20 @@ const (
 )
 
 // Container represents a running shadow Postgres instance.
-type Container struct {
-	Name string
-	Port string
-	DSN  string
-}
+type Container models.Container
 
 // Start spins up a new ephemeral Postgres container and returns it when ready.
 func Start(ctx context.Context) (*Container, error) {
 	name := fmt.Sprintf("migrate-gen-shadow-%d-%d", os.Getpid(), rand.Intn(99999))
 
 	cmd := exec.CommandContext(ctx, "docker", "run",
-		"--rm",                  // auto-remove when stopped
-		"-d",                    // detached
+		"--rm", // auto-remove when stopped
+		"-d",   // detached
 		"--name", name,
 		"-e", "POSTGRES_USER="+shadowUser,
 		"-e", "POSTGRES_PASSWORD="+shadowPassword,
 		"-e", "POSTGRES_DB="+shadowDB,
-		"-P",                    // random available host port
+		"-P", // random available host port
 		"--health-cmd", "pg_isready -U shadow",
 		"--health-interval", "1s",
 		"--health-retries", "20",
@@ -78,7 +75,7 @@ func Start(ctx context.Context) (*Container, error) {
 		return nil, fmt.Errorf("postgres not ready: %w", err)
 	}
 
-	return &Container{Name: name, Port: port, DSN: dsn}, nil
+	return (*Container)(&models.Container{Name: name, Port: port, DSN: dsn}), nil
 }
 
 // Stop tears down the container. Safe to call multiple times.

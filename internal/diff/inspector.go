@@ -12,56 +12,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/nutcas3/migrate-gen/models"
 )
-
-// Schema is the complete, inspected state of a database.
-type Schema struct {
-	Tables  map[string]*Table
-	Indexes map[string]*Index
-}
-
-func NewSchema() *Schema {
-	return &Schema{Tables: make(map[string]*Table), Indexes: make(map[string]*Index)}
-}
-
-// Table represents one BASE TABLE in the public schema.
-type Table struct {
-	Name        string
-	Columns     map[string]*Column
-	ColOrder    []string // ordinal order — preserved when writing CREATE TABLE
-	PrimaryKeys []string // ordered column names
-	ForeignKeys []*ForeignKey
-	Uniques     [][]string // each inner slice is one unique constraint
-}
-
-// Column is one column as INFORMATION_SCHEMA + pg_attribute reports it.
-type Column struct {
-	Name         string
-	Position     int
-	RawType      string // raw data_type from INFORMATION_SCHEMA
-	FullType     string // normalised: varchar(255), numeric(10,2), etc.
-	IsNullable   bool
-	DefaultValue sql.NullString
-	IsIdentity   bool // GENERATED ALWAYS AS IDENTITY / SERIAL
-}
-
-// ForeignKey is a single FK constraint.
-type ForeignKey struct {
-	ConstraintName string
-	Column         string
-	RefTable       string
-	RefColumn      string
-	OnDelete       string // CASCADE | SET NULL | RESTRICT | NO ACTION
-}
-
-// Index is a non-PK index.
-type Index struct {
-	Name      string
-	TableName string
-	IsUnique  bool
-	Columns   []string
-	Method    string // btree | hash | gin | gist | brin
-}
 
 // scopedToPublic — all queries filter to schema='public', table_type='BASE TABLE'
 // so we never accidentally diff system catalogs or views.
@@ -166,8 +119,8 @@ ORDER BY ix.tablename, ix.indexname;
 
 // InspectDB connects to dsn and returns the full schema of the public schema.
 // db must be a *sql.DB (satisfied by pgx stdlib bridge, GORM db.DB(), Bun db.DB, etc.)
-func InspectDB(ctx context.Context, db *sql.DB) (*Schema, error) {
-	s := NewSchema()
+func InspectDB(ctx context.Context, db *sql.DB) (*models.Schema, error) {
+	s := models.NewSchema()
 
 	if err := loadColumns(ctx, db, s); err != nil {
 		return nil, fmt.Errorf("columns: %w", err)
@@ -187,7 +140,7 @@ func InspectDB(ctx context.Context, db *sql.DB) (*Schema, error) {
 	return s, nil
 }
 
-func loadColumns(ctx context.Context, db *sql.DB, s *Schema) error {
+func loadColumns(ctx context.Context, db *sql.DB, s *models.Schema) error {
 	rows, err := db.QueryContext(ctx, sqlColumns)
 	if err != nil {
 		return err
@@ -213,7 +166,7 @@ func loadColumns(ctx context.Context, db *sql.DB, s *Schema) error {
 		}
 
 		tbl := getOrCreateTable(s, tableName)
-		col := &Column{
+		col := &models.Column{
 			Name:         colName,
 			Position:     pos,
 			RawType:      dataType,
@@ -228,7 +181,7 @@ func loadColumns(ctx context.Context, db *sql.DB, s *Schema) error {
 	return rows.Err()
 }
 
-func loadPrimaryKeys(ctx context.Context, db *sql.DB, s *Schema) error {
+func loadPrimaryKeys(ctx context.Context, db *sql.DB, s *models.Schema) error {
 	rows, err := db.QueryContext(ctx, sqlPrimaryKeys)
 	if err != nil {
 		return err
@@ -257,7 +210,7 @@ func loadPrimaryKeys(ctx context.Context, db *sql.DB, s *Schema) error {
 	return rows.Err()
 }
 
-func loadForeignKeys(ctx context.Context, db *sql.DB, s *Schema) error {
+func loadForeignKeys(ctx context.Context, db *sql.DB, s *models.Schema) error {
 	rows, err := db.QueryContext(ctx, sqlForeignKeys)
 	if err != nil {
 		return err
@@ -265,7 +218,7 @@ func loadForeignKeys(ctx context.Context, db *sql.DB, s *Schema) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		var fk ForeignKey
+		var fk models.ForeignKey
 		var tableName string
 		if err := rows.Scan(
 			&fk.ConstraintName, &tableName, &fk.Column,
@@ -279,7 +232,7 @@ func loadForeignKeys(ctx context.Context, db *sql.DB, s *Schema) error {
 	return rows.Err()
 }
 
-func loadUniques(ctx context.Context, db *sql.DB, s *Schema) error {
+func loadUniques(ctx context.Context, db *sql.DB, s *models.Schema) error {
 	rows, err := db.QueryContext(ctx, sqlUniques)
 	if err != nil {
 		return err
@@ -310,7 +263,7 @@ func loadUniques(ctx context.Context, db *sql.DB, s *Schema) error {
 	return rows.Err()
 }
 
-func loadIndexes(ctx context.Context, db *sql.DB, s *Schema) error {
+func loadIndexes(ctx context.Context, db *sql.DB, s *models.Schema) error {
 	rows, err := db.QueryContext(ctx, sqlIndexes)
 	if err != nil {
 		return err
@@ -318,7 +271,7 @@ func loadIndexes(ctx context.Context, db *sql.DB, s *Schema) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		var idx Index
+		var idx models.Index
 		var indexDef string
 		if err := rows.Scan(&idx.Name, &idx.TableName, &indexDef, &idx.Method, &idx.IsUnique); err != nil {
 			return err
@@ -329,12 +282,11 @@ func loadIndexes(ctx context.Context, db *sql.DB, s *Schema) error {
 	return rows.Err()
 }
 
-
-func getOrCreateTable(s *Schema, name string) *Table {
+func getOrCreateTable(s *models.Schema, name string) *models.Table {
 	if t, ok := s.Tables[name]; ok {
 		return t
 	}
-	t := &Table{Name: name, Columns: make(map[string]*Column)}
+	t := &models.Table{Name: name, Columns: make(map[string]*models.Column)}
 	s.Tables[name] = t
 	return t
 }

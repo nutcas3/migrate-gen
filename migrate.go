@@ -11,7 +11,7 @@
 //   - DROP COLUMN operations are commented out and require manual review
 //   - TYPE changes are flagged for review
 //   - All destructive operations require human intervention
-package migrate_gen
+package adapters
 
 import (
 	"context"

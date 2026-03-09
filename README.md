@@ -1,9 +1,73 @@
 # migrate-gen — Declarative Migration Engine for Go
 
-A framework-agnostic, Shadow-DB-powered migration generator.
+A framework-agnostic, Shadow-DB-powered migration generator with **modern TUI**.
 **No DSL. No ORM magic. Just SQL you can read.**
 
 ---
+
+## Installation
+
+```bash
+go install github.com/nutcas3/migrate-gen/cmd/migrate-gen@latest
+```
+
+Or use directly in your project:
+
+```bash
+go run ./cmd/migrate-gen gen add_posts_table
+go run ./cmd/migrate-gen gen --tui add_posts_table  # Interactive TUI mode
+```
+
+### Dependencies
+
+- **Docker** (required for shadow containers)
+- **Go 1.26+** (for building)
+
+---
+
+## 🎨 Interactive TUI (NEW!)
+
+migrate-gen now features a beautiful, interactive terminal UI powered by Bubbletea and Charm!
+
+### TUI Mode
+
+```bash
+go run ./cmd/migrate-gen gen --tui add_posts_table
+```
+
+**Features:**
+- 🎯 **Real-time Progress**: Visual progress bar through all migration phases
+- ⏳ **Active Indicators**: Animated spinners for each operation
+- 🎨 **Beautiful Styling**: Modern colors and bordered layouts
+- ⚠️ **Warning Display**: Highlighted warnings in styled boxes
+- ✅ **Clear Feedback**: Success/error states with detailed information
+- 🔧 **Error Handling**: Graceful error display with user guidance
+
+**TUI Workflow:**
+```
+🚀 migrate-gen
+────────────────────────────────────────────────────────────────────────────────────────
+⏳ Starting shadow DB for current state...
+Progress: ████████████████████████████████████████████████████████████ 100%
+
+⚠️  Warnings:
+• TABLE REMOVED: "old_table" exists in DB but not in schema.sql
+• COLUMN REMOVED: "unused_column" is in the DB but not in schema.sql
+
+✅ Migration generated successfully!
+Files created:
+• migrations/000004_add_posts_table.up.sql
+• migrations/000004_add_posts_table.down.sql
+────────────────────────────────────────────────────────────────────────────────────────
+```
+
+### Traditional CLI Mode
+
+```bash
+go run ./cmd/migrate-gen gen add_posts_table
+```
+
+Both modes provide the same powerful functionality - choose your preferred interface!
 
 ## Architecture
 
@@ -63,6 +127,46 @@ The engine then runs `INFORMATION_SCHEMA` queries against both and computes the 
 
 ---
 
+## 📋 CLI Commands
+
+| Command | Description | TUI Support |
+|---------|-------------|-------------|
+| `gen [name]` | Generate migration from schema.sql diff | ✅ `--tui` flag |
+| `check` | CI mode: exit 1 if schema.sql ≠ migrations/ | ❌ (text-only) |
+| `dump` | Export schema from live DB to schema.sql | ❌ (text-only) |
+| `lint` | Scan migrations for dangerous keywords | ❌ (text-only) |
+
+### Usage Examples
+
+```bash
+# Interactive TUI (recommended)
+go run ./cmd/migrate-gen gen --tui add_users_table
+
+# Traditional CLI
+go run ./cmd/migrate-gen gen add_users_table
+
+# CI/CD verification
+go run ./cmd/migrate-gen check
+
+# Export from existing database
+go run ./cmd/migrate-gen dump --adapter=gorm --dsn=$DATABASE_URL
+
+# Safety check
+go run ./cmd/migrate-gen lint
+```
+
+### Flags
+
+```bash
+--tui              Enable interactive TUI (gen command only)
+--migrations DIR   Migrations directory (default: migrations/)
+--schema FILE      Schema file path (default: internal/schema/schema.sql)
+--adapter NAME     ORM adapter for dump (gorm|bun|beego|bob|pgx)
+--dsn URL          Database connection string for dump
+```
+
+---
+
 ## Daily Developer Workflow
 
 ### Step 1: Edit schema.sql
@@ -86,11 +190,39 @@ CREATE INDEX "idx_comments_post_id" ON "comments" USING btree ("post_id");
 
 ### Step 2: Generate
 
+#### Interactive TUI Mode (Recommended)
+
 ```bash
-make gen name=add_comments_table
+go run ./cmd/migrate-gen gen --tui add_comments_table
 ```
 
-Output:
+#### Traditional CLI Mode
+
+```bash
+go run ./cmd/migrate-gen gen add_comments_table
+```
+
+**TUI Output:**
+```
+🚀 migrate-gen
+────────────────────────────────────────────────────────────────────────────────────────
+⏳ Starting shadow DB for current state...
+Progress: ████████████████████████████████████████████████████████████ 25%
+
+⏳ Applying existing migrations...
+Progress: ████████████████████████████████████████████████████████████ 50%
+
+⏳ Computing schema diff...
+Progress: ████████████████████████████████████████████████████████████ 100%
+
+✅ Migration generated successfully!
+Files created:
+• migrations/000003_add_comments_table.up.sql
+• migrations/000003_add_comments_table.down.sql
+────────────────────────────────────────────────────────────────────────────────────────
+```
+
+**CLI Output:**
 ```
 ━━━ migrate-gen ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [1/4] Starting shadow DB for current state...
@@ -104,9 +236,6 @@ Output:
 ✅ Migration generated:
    migrations/000003_add_comments_table.up.sql
    migrations/000003_add_comments_table.down.sql
-
-━━━ sqlc generate ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Done. Commit: migrations/, internal/db/sqlc/
 ```
 
 ### Step 3: Apply
@@ -211,8 +340,13 @@ Same pattern — use `make dump-bun` or `make dump-beego` respectively.
 ```
 migrate-gen/
 ├── cmd/migrate-gen/
-│   └── main.go                     # CLI: gen | check | dump | lint
-├── internal/
+│   ├── main.go                     # CLI: gen | check | dump | lint
+│   └── tui.go                      # 🎨 Interactive TUI (Bubbletea + Charm)
+├── models/                         # 📁 Shared data models
+│   ├── schema.go                   # Schema, Table, Column, Index, ForeignKey
+│   ├── diff.go                     # Result, Statement, WriteOptions, CheckResult
+│   └── shadow.go                   # Container model
+├── internal/                       # Private implementation
 │   ├── diff/
 │   │   ├── inspector.go            # INFORMATION_SCHEMA queries
 │   │   ├── engine.go               # current → desired diff logic

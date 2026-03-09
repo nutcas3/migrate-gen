@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/nutcas3/migrate-gen/adapters"
 	"github.com/nutcas3/migrate-gen/internal/diff"
-	"github.com/nutcas3/migrate-gen/pkg/adapters"
 
 	gormpostgres "gorm.io/driver/postgres"
 	gormlib "gorm.io/gorm"

@@ -25,8 +25,8 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
+	"github.com/nutcas3/migrate-gen/adapters"
 	"github.com/nutcas3/migrate-gen/internal/diff"
-	"github.com/nutcas3/migrate-gen/pkg/adapters"
 )
 
 func init() { adapters.Register(&BobAdapter{}) }

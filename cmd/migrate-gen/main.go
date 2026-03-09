@@ -24,7 +24,7 @@ import (
 	"os"
 	"strings"
 
-	migrate_gen "github.com/nutcas3/migrate-gen/pkg/migrate-gen"
+	migrate_gen "github.com/nutcas3/migrate-gen"
 )
 
 type config struct {

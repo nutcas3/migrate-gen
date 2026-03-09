@@ -16,8 +16,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/nutcas3/migrate-gen/pkg/adapters"
-	gorm_adapter "github.com/nutcas3/migrate-gen/pkg/adapters/gorm" // reuse dumpToSQL
+	"github.com/nutcas3/migrate-gen/adapters"
+	gorm_adapter "github.com/nutcas3/migrate-gen/adapters/gorm" // reuse dumpToSQL
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/driver/pgdriver"
 )

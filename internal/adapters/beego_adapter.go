@@ -19,8 +19,8 @@ import (
 
 	beegorm "github.com/beego/beego/v2/client/orm"
 	_ "github.com/lib/pq"
-	"github.com/nutcas3/migrate-gen/pkg/adapters"
-	gorm_adapter "github.com/nutcas3/migrate-gen/pkg/adapters/gorm"
+	"github.com/nutcas3/migrate-gen/adapters"
+	gorm_adapter "github.com/nutcas3/migrate-gen/adapters/gorm"
 )
 
 func init() { adapters.Register(&BeegoAdapter{}) }

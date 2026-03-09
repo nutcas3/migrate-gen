@@ -145,10 +145,6 @@ func (c *Container) ApplySchemaFile(ctx context.Context, schemaPath string) erro
 	return nil
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Internal helpers
-// ─────────────────────────────────────────────────────────────────
-
 func waitForPort(ctx context.Context, name string) (string, error) {
 	deadline := time.Now().Add(readyTimeout)
 	for time.Now().Before(deadline) {

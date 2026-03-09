@@ -86,10 +86,6 @@ func writeFile(path string, stmts []Statement, direction, migName string) error 
 	return os.WriteFile(path, []byte(sb.String()), 0o644)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// CI verification
-// ─────────────────────────────────────────────────────────────────
-
 // CheckResult is the exit value for --check mode.
 type CheckResult struct {
 	InSync  bool
@@ -116,10 +112,6 @@ func FormatCheckOutput(result *Result) *CheckResult {
 	}
 	return &CheckResult{InSync: false, Changes: changes}
 }
-
-// ─────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────
 
 // nextSequence returns the next integer after the highest existing sequence
 // number in migrationsDir. Returns 1 if none exist.

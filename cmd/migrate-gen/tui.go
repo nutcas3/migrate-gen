@@ -49,10 +49,6 @@ var (
 			BorderForeground(lipgloss.Color("#6C7086")).
 			Padding(1, 2).
 			Margin(1, 0)
-
-	progressStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#A6E3A1")).
-			Width(40)
 )
 
 // State represents the current operation state

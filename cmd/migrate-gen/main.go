@@ -306,7 +306,7 @@ func logf(format string, args ...any) {
 	fmt.Printf(format+"\n", args...)
 }
 
-func openSQL(dsn string) (*sql.DB, error) {
+func openSQL(_ string) (*sql.DB, error) {
 	// Import cycle guard — the real open is in shadow package.
 	// For the dump command we use lib/pq directly.
 	return nil, fmt.Errorf("import openSQL from shadow package")

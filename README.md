@@ -14,6 +14,10 @@ go install github.com/nutcas3/migrate-gen/cmd/migrate-gen@latest
 Or use directly in your project:
 
 ```bash
+# Add to your project
+go get github.com/nutcas3/migrate-gen
+
+# Run commands
 go run ./cmd/migrate-gen gen add_posts_table
 go run ./cmd/migrate-gen gen --tui add_posts_table  # Interactive TUI mode
 ```

@@ -62,7 +62,7 @@ func Diff(current, desired *models.Schema) *models.Result {
 			drop := fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE;", quote(tname))
 			r.UpStatements = append(r.UpStatements, models.Statement{
 				SQL:       drop,
-				Comment:   fmt.Sprintf("⚠️  TABLE REMOVED from schema.sql — uncomment after review"),
+				Comment:   "⚠️ TABLE REMOVED from schema.sql — uncomment after review",
 				Danger:    true,
 				Commented: true,
 			})

@@ -24,6 +24,7 @@ import (
 	"os"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	migrate_gen "github.com/nutcas3/migrate-gen"
 )
 
@@ -71,11 +72,27 @@ func main() {
 func runGen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
 	cfg := defaultConfig()
+	tui := fs.Bool("tui", false, "Use interactive TUI interface")
 	fs.StringVar(&cfg.MigrationsDir, "migrations", cfg.MigrationsDir, "Directory containing migration files")
 	fs.StringVar(&cfg.SchemaFile, "schema", cfg.SchemaFile, "Path to schema.sql")
 	fs.Parse(args)
 
 	name := strings.Join(fs.Args(), "_")
+	if name == "" {
+		name = "schema_update"
+	}
+
+	if *tui {
+		// Run with TUI
+		model := InitialModel(cfg, name)
+		p := tea.NewProgram(model, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			fatalf("Error running TUI: %v", err)
+		}
+		return
+	}
+
+	// Original CLI mode
 	ctx := context.Background()
 
 	logf("Starting migrate-gen...")

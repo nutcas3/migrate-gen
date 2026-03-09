@@ -10,6 +10,7 @@
 //
 // Usage:
 //   go run ./cmd/migrate-gen gen add_posts_table
+//   go run ./cmd/migrate-gen gen --tui add_posts_table  # Interactive TUI mode
 //   go run ./cmd/migrate-gen check
 //   go run ./cmd/migrate-gen dump --adapter=gorm --dsn=$DEV_DSN
 //   go run ./cmd/migrate-gen lint

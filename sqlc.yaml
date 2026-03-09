@@ -1,0 +1,45 @@
+# sqlc.yaml
+# Points sqlc at the SAME schema.sql that migrate-gen uses.
+# Run: sqlc generate   (or: make gen, which calls this automatically)
+#
+# Docs: https://docs.sqlc.dev/en/latest/reference/config.html
+
+version: "2"
+
+sql:
+  - engine: "postgresql"
+
+    # The schema file that defines your tables.
+    # migrate-gen and sqlc BOTH read this file — one source of truth.
+    schema: "internal/schema/schema.sql"
+
+    # Hand-written SQL queries that sqlc compiles into Go functions.
+    queries: "internal/schema/queries/"
+
+    gen:
+      go:
+        package:   "sqlcdb"
+        out:       "internal/db/sqlc"
+
+        # Use pgx/v5 as the underlying driver.
+        # This tells sqlc to emit pgx-native types (pgtype.Text etc.)
+        # instead of database/sql types.
+        sql_driver: "pgx/v5"
+
+        # Emit a Querier interface — makes every function mockable in tests.
+        emit_interface: true
+
+        # Add json struct tags (useful for API responses).
+        emit_json_tags: true
+
+        # Use exact table names (users → Users, not User).
+        emit_exact_table_names: false
+
+        # Override specific type mappings if needed.
+        overrides:
+          # Map Postgres uuid → google/uuid instead of [16]byte
+          - db_type:   "uuid"
+            go_type:   "github.com/google/uuid.UUID"
+          # Map jsonb → json.RawMessage for flexibility
+          - db_type:   "jsonb"
+            go_type:   "encoding/json.RawMessage"

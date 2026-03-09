@@ -25,10 +25,6 @@ type Adapter interface {
 	DumpSchema(dsn string) (string, error)
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Registry
-// ─────────────────────────────────────────────────────────────────
-
 var registry = map[string]Adapter{}
 
 // Register makes an adapter available by name.

@@ -8,16 +8,15 @@ type Result struct {
 }
 
 type Statement struct {
-	SQL      string
-	Comment  string // displayed above the statement in the .sql file
-	Danger   bool   // true = flagged for senior-engineer review
-	Commented bool  // true = written as a SQL comment (DROP TABLE etc.)
+	SQL       string
+	Comment   string // displayed above the statement in the .sql file
+	Danger    bool   // true = flagged for senior-engineer review
+	Commented bool   // true = written as a SQL comment (DROP TABLE etc.)
 }
 
 func (r *Result) IsEmpty() bool {
 	return len(r.UpStatements) == 0 && len(r.Warnings) == 0
 }
-
 
 type WriteOptions struct {
 	MigrationsDir string

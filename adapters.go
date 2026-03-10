@@ -5,8 +5,9 @@
 // migrate-gen can then process with the Shadow DB engine.
 //
 // Usage:
-//   adapter, err := adapters.Get("gorm")
-//   schema, err := adapter.DumpSchema(dsn)
+//
+//	adapter, err := adapters.Get("gorm")
+//	schema, err := adapter.DumpSchema(dsn)
 package adapters
 
 import (

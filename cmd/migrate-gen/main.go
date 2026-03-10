@@ -270,7 +270,7 @@ func runLint(args []string) {
 		upper := strings.ToUpper(string(content))
 		for _, kw := range dangerous {
 			// Skip if it's inside a SQL comment line
-			for _, line := range strings.Split(upper, "\n") {
+			for line := range strings.SplitSeq(upper, "\n") {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "--") {
 					continue // commented out — safe
